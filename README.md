@@ -236,12 +236,215 @@ python -m pytest
 - Works Cited section extraction
 - Edge cases and error handling
 
+## Phase 3: Web Crawling Module ✅
+
+The Citation Checker now includes a comprehensive web crawling system for extracting content from academic and general websites to support citation verification.
+
+### Web Crawling Architecture
+
+#### Base Crawler (`src/crawlers/base_crawler.py`)
+
+The `BaseCrawler` is an abstract base class that provides:
+
+- **Session Management**: Configured HTTP sessions with retry strategies
+- **Robots.txt Compliance**: Automatic checking of robots.txt files
+- **Rate Limiting**: Built-in delays between requests
+- **Error Handling**: Comprehensive error handling and logging
+- **Content Cleaning**: Text normalization and cleaning utilities
+
+#### Academic Crawler (`src/crawlers/academic_crawler.py`)
+
+The `AcademicCrawler` specializes in extracting content from academic databases:
+
+- **Supported Academic Domains**:
+  - **arXiv**: Paper titles, authors, abstracts, subjects, submission dates
+  - **PubMed**: Medical papers, authors, abstracts, journals, DOIs
+  - **IEEE Xplore**: Technical papers and conference proceedings
+  - **ACM Digital Library**: Computer science publications
+  - **Nature, Science, PLOS**: Scientific journals
+  - **ScienceDirect, Springer**: Academic publishers
+  - **JSTOR**: Academic archives
+  - **Google Scholar**: Citation data
+
+- **Extraction Features**:
+  - Domain-specific content extraction strategies
+  - Metadata extraction (authors, titles, abstracts, DOIs)
+  - Publication information (journals, dates, volumes)
+  - Citation counts and related papers
+
+#### Web Crawler (`src/crawlers/web_crawler.py`)
+
+The `WebCrawler` handles general websites with multiple extraction strategies:
+
+- **Content Extraction Methods**:
+  1. **Newspaper3k**: Optimized for news articles and blog posts
+  2. **Trafilatura**: General-purpose content extraction
+  3. **Heuristic-based**: Fallback method using HTML structure analysis
+
+- **Features**:
+  - Automatic method selection based on content type
+  - Main content identification and extraction
+  - Metadata extraction (titles, descriptions, authors)
+  - Clean text output with proper formatting
+
+#### Crawler Manager (`src/crawlers/crawler_manager.py`)
+
+The `CrawlerManager` provides a unified interface for all crawling operations:
+
+- **Automatic Crawler Selection**: Chooses the best crawler for each URL
+- **Concurrent Crawling**: Multi-threaded crawling for improved performance
+- **Statistics Tracking**: Comprehensive crawling statistics and metrics
+- **Error Handling**: Graceful handling of failed requests
+- **Resource Management**: Proper cleanup and resource management
+
+### Usage Examples
+
+#### Basic Web Crawling
+
+```python
+from src.crawlers.crawler_manager import CrawlerManager
+
+# Initialize crawler manager
+with CrawlerManager(max_workers=3, default_timeout=10) as manager:
+    # Crawl a single URL
+    result = manager.crawl_url("https://arxiv.org/abs/2101.00001")
+    
+    if result.success:
+        print(f"Title: {result.metadata.get('title', 'N/A')}")
+        print(f"Content: {result.content[:200]}...")
+        print(f"Response Time: {result.response_time:.2f}s")
+    else:
+        print(f"Error: {result.error}")
+```
+
+#### Batch Crawling
+
+```python
+# Crawl multiple URLs concurrently
+urls = [
+    "https://arxiv.org/abs/2101.00001",
+    "https://pubmed.ncbi.nlm.nih.gov/12345678",
+    "https://example.com/article"
+]
+
+with CrawlerManager() as manager:
+    results = manager.crawl_urls(urls)
+    
+    for result in results:
+        print(f"URL: {result.url}")
+        print(f"Success: {result.success}")
+        if result.success:
+            print(f"Content Length: {len(result.content)} chars")
+```
+
+#### Citation Integration
+
+```python
+# Crawl URLs from citation objects
+citations = [
+    {'title': 'Paper 1', 'url': 'https://arxiv.org/abs/2101.00001'},
+    {'title': 'Paper 2', 'url': 'https://example.com/paper'}
+]
+
+with CrawlerManager() as manager:
+    results = manager.crawl_from_citations(citations)
+    
+    for i, result in enumerate(results):
+        citation = citations[i]
+        print(f"Citation: {citation['title']}")
+        print(f"Verification: {'✅ Available' if result.success else '❌ Failed'}")
+```
+
+#### Crawler Statistics
+
+```python
+with CrawlerManager() as manager:
+    # Perform crawling operations...
+    results = manager.crawl_urls(urls)
+    
+    # Get detailed statistics
+    stats = manager.get_stats()
+    print(f"Total Crawls: {stats['total_crawls']}")
+    print(f"Success Rate: {stats['success_rate']:.1%}")
+    print(f"Average Time: {stats['avg_crawl_time']:.2f}s")
+    print(f"Crawler Usage: {stats['crawler_usage']}")
+```
+
+### Supported Domains
+
+The web crawling system supports:
+
+**📚 Academic Domains (13 specialized crawlers):**
+- arxiv.org - arXiv preprint server
+- pubmed.ncbi.nlm.nih.gov - PubMed medical database
+- ieeexplore.ieee.org - IEEE Xplore digital library
+- dl.acm.org - ACM Digital Library
+- nature.com - Nature Publishing Group
+- science.org - Science Magazine
+- plos.org - PLOS journals
+- sciencedirect.com - Elsevier ScienceDirect
+- springer.com - Springer publications
+- jstor.org - JSTOR academic archives
+- scholar.google.com - Google Scholar
+- biorxiv.org - bioRxiv preprint server
+- medrxiv.org - medRxiv preprint server
+
+**🌐 General Web Support:**
+- All HTTP/HTTPS websites with intelligent content extraction
+- Automatic fallback strategies for different content types
+- Respectful crawling with robots.txt compliance
+
+### Demo Script
+
+Run the web crawler demo to see it in action:
+
+```bash
+python demo_crawler.py
+```
+
+The demo script demonstrates:
+- Crawler selection for different URL types
+- Concurrent crawling performance
+- Content extraction from various sources
+- Integration with citation verification workflow
+- Statistics and performance metrics
+
+### Testing
+
+Comprehensive test suite for web crawling functionality:
+
+```bash
+# Run crawler tests
+python -m pytest src/tests/test_crawlers.py -v
+```
+
+**Test Coverage:**
+- Individual crawler functionality
+- Content extraction methods
+- Crawler manager coordination
+- Concurrent crawling performance
+- Error handling and edge cases
+- Integration with citation system
+
+### Rate Limiting and Ethics
+
+The web crawling system is designed to be respectful:
+
+- **Robots.txt Compliance**: Automatically checks and respects robots.txt files
+- **Rate Limiting**: Built-in delays between requests (1 second default)
+- **Timeout Handling**: Configurable timeouts to avoid hanging requests
+- **User Agent**: Identifies itself as an educational research tool
+- **Retry Strategy**: Intelligent retry with exponential backoff
+- **Resource Cleanup**: Proper session management and resource cleanup
+
 ## Future Development
 
 Potential areas for expansion:
 
-1. Support for additional citation formats (MLA, Chicago, IEEE, etc.)
-2. Integration with reference databases for validation
-3. Citation correction suggestions
+1. Support for additional citation formats (Chicago, IEEE, etc.)
+2. Enhanced citation verification using crawled content
+3. Citation correction suggestions based on web content
 4. Web interface for citation checking
 5. Batch processing capabilities
+6. Integration with more academic databases
+7. Advanced content analysis and similarity detection
